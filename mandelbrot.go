@@ -36,5 +36,9 @@ func checkConvergence(arg complex128, seed complex128, maxIterations int) (conve
 }
 
 func main() {
-
+	//determine zoom
+	//determine set of points
+	//find any previously calculated points
+	//check each remaining point for convergence
+	//write the zoom level to an image
 }
