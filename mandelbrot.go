@@ -1,13 +1,15 @@
 package main
 
+import (
+	"fmt"
+	"math"
+)
+
 /*
 	real values: -2.0 to 1.0
 	imag values: -1.5 to 1.5
 	If the magnitude of a given iteration for point c is greater than 2, then the sequence tend to infinity
 */
-import (
-	"math"
-)
 
 //find out how far away from the origin our complex coordinate is
 func magnitude(arg complex128) (mag float64) {
@@ -58,17 +60,36 @@ func main() {
 	//check each remaining point for convergence
 	//write the zoom level to an image
 
-	number_frames := 30
+	number_frames := float64(5)
 
 	starting_coordinate := 0 + 0i
-	zoom_factor := 2
-	fram_dimension := 256
+	a := real(starting_coordinate)
+	b := imag(starting_coordinate)
+	zoom_factor := 0.5
+	frame_dimension := float64(256)
 
-	gif := gif{number_frames, []frame{}}
+	//gif := gif{number_frames, []frame{}}
 
 	to_be_calculated := make(map[complex128]data_point)
 
-	for i := 0; i < number_frames; i++ {
+	for i := float64(1); i <= number_frames; i++ {
+		radius := float64((frame_dimension * i * zoom_factor) / 2)
+		x_offset := float64(i * zoom_factor)
+		y_offset := float64(i * zoom_factor)
+		for x := a - (radius); x < a+(radius-1); x += x_offset {
+			for y := b - (radius); y < b+(radius-1); y += y_offset {
+				data := to_be_calculated[complex(float64(x), float64(y))]
+				data.zoom_levels = append(data.zoom_levels, int(i))
+				data.coordinate = complex(float64(x), float64(y))
+				to_be_calculated[complex(float64(x), float64(y))] = data
+			}
+		}
+	}
+
+	for k, v := range to_be_calculated {
+		if (k == 0+0i) || (k == 0+.5i) || (k == 0+1i) || (k == 0+1.5i) || (k == 0+2i) || (k == 0+2.5i) {
+			fmt.Println(k, v)
+		}
 
 	}
 }
