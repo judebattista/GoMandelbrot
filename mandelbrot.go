@@ -5,6 +5,12 @@ import (
 	"math"
 )
 
+//comment
+import (
+	"fmt"
+	"math"
+)
+
 /*
 	real values: -2.0 to 1.0
 	imag values: -1.5 to 1.5
