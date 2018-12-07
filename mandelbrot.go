@@ -5,12 +5,6 @@ import (
 	"math"
 )
 
-//comment
-import (
-	"fmt"
-	"math"
-)
-
 /*
 	real values: -2.0 to 1.0
 	imag values: -1.5 to 1.5
@@ -20,6 +14,11 @@ import (
 //find out how far away from the origin our complex coordinate is
 func magnitude(arg complex128) (mag float64) {
 	mag = math.Sqrt(real(arg)*real(arg) + imag(arg)*imag(arg))
+	return
+}
+
+func magnitudeSquared(arg complex128) (mag float64) {
+	mag = real(arg)*real(arg) + imag(arg)*imag(arg)
 	return
 }
 
@@ -48,8 +47,10 @@ func checkConvergence(arg complex128, seed complex128, maxIterations int) (conve
 	for ndx := 0; ndx < maxIterations; ndx++ {
 		lastTerm = currentTerm
 		currentTerm = (lastTerm * lastTerm) + arg
-		//This is probably not the right approach
-		if magnitude(currentTerm) > 2 {
+		//If we ever find ourselves more than 2 from the origin, we diverge
+		//if magnitude(currentTerm) > 2 {
+		//But... we can save a step if we square both sides!
+		if magnitudeSquared(currentTerm) > 4 {
 			iterations = ndx + 1
 			converges = false
 			return
@@ -57,6 +58,18 @@ func checkConvergence(arg complex128, seed complex128, maxIterations int) (conve
 	}
 	converges = true
 	return
+}
+
+func testCheckConvergence() {
+	for foo := 0.0; foo < 2; foo += 0.2 {
+		for bar := 0.0; bar < 2; bar += 0.2 {
+			var coords = complex(foo, bar)
+			converges, iterations := checkConvergence(coords, 0, 10)
+			if converges {
+				fmt.Printf("%v + %vi converges: %v after %v iterations.\n", real(coords), imag(coords), converges, iterations)
+			}
+		}
+	}
 }
 
 func main() {
@@ -96,6 +109,7 @@ func main() {
 		if (k == 0+0i) || (k == 0+.5i) || (k == 0+1i) || (k == 0+1.5i) || (k == 0+2i) || (k == 0+2.5i) {
 			fmt.Println(k, v)
 		}
-
 	}
+
+	testCheckConvergence()
 }
