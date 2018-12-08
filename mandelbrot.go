@@ -86,6 +86,10 @@ func collector(calculated chan data_point, finished gif, completed chan bool) {
 	for current_point := range calculated {
 		for _, value := range current_point.zoom_levels {
 			//Insert comment here
+			//targetMap := finished.frames[value-1].m
+			if finished.frames[value-1].m == nil {
+				finished.frames[value-1].m = make(map[complex128]data_point)
+			}
 			finished.frames[value-1].m[current_point.coordinate] = current_point
 		}
 	}
@@ -160,13 +164,13 @@ func main() {
 	<-finished
 
 	for i, v := range gif.frames {
-		file_name := fmt.Sprintf("frame%02d.txt", i-1)
+		file_name := fmt.Sprintf("frame%02d.txt", i)
 		file, err := os.Create(file_name)
 		if err != nil {
 			log.Fatal("Cannot create file", err)
 		}
 		for _, point := range v.m {
-			fmt.Fprintf(file, "%v, %v, %v", real(point.coordinate), imag(point.coordinate), point.iterations)
+			fmt.Fprintf(file, "%v, %v, %v\n", real(point.coordinate), imag(point.coordinate), point.iterations)
 		}
 		file.Close()
 	}
