@@ -81,6 +81,7 @@ func calculator(to_calculate chan data_point, calculated chan data_point) {
 	}
 }
 
+//Function to spam a channel with meaningless data for test purposes
 func busyWork(targetChannel chan data_point) {
 	for {
 		dummyPoint := data_point{0 + 0i, true, 10, []int{1, 2}}
@@ -107,6 +108,7 @@ func main() {
 
 	to_be_calculated := make(map[complex128]data_point)
 
+	//Can we parallelize this?
 	for i := float64(1); i <= number_frames; i++ {
 		radius := float64((frame_dimension * i * zoom_factor) / 2)
 		x_offset := float64(i * zoom_factor)
@@ -132,12 +134,9 @@ func main() {
 
 	fmt.Printf("Found %d points in to_be_calculated.\n", len(to_be_calculated))
 
-	go busyWork(calculated)
-	go busyWork(to_calculate)
-
 	for _, v := range to_be_calculated {
 		fmt.Printf("Adding point %v, %v to to_calculate.\n", real(v.coordinate), imag(v.coordinate))
-		to_calculate <- v
+		//to_calculate <- v //This line causes deadlock!
 		counter++
 	}
 
@@ -152,7 +151,7 @@ func main() {
 	fmt.Println("Spun off all go calculators...")
 
 	for ; counter >= 0; counter-- {
-		current_point := <-calculated
+		current_point := <-calculated //This line also causes deadlock
 		for _, value := range current_point.zoom_levels {
 			//Insert comment here
 			gif.frames[value-1].m[current_point.coordinate] = current_point
