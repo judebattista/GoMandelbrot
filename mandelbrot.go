@@ -74,11 +74,22 @@ func testCheckConvergence() {
 	}
 }
 
-func calculator(to_calculate chan data_point, calculated chan data_point) {
+func calculator(to_calculate chan data_point, calculated chan data_point, finished chan bool) {
 	for current_point := range to_calculate {
 		current_point.converges, current_point.iterations = checkConvergence(current_point.coordinate, 0+0i, 2000)
 		calculated <- current_point
 	}
+	finished <- true
+}
+
+func collector(calculated chan data_point, finished gif, completed chan bool) {
+	for current_point := range calculated {
+		for _, value := range current_point.zoom_levels {
+			//Insert comment here
+			finished.frames[value-1].m[current_point.coordinate] = current_point
+		}
+	}
+	completed <- true
 }
 
 //Function to spam a channel with meaningless data for test purposes
@@ -123,42 +134,30 @@ func main() {
 		}
 	}
 
-	counter := 0
-
 	num_threads := 5
+	to_calculate := make(chan data_point)
+	calculated := make(chan data_point)
+	finished := make(chan bool)
 
-	var to_calculate = make(chan data_point)
-	var calculated = make(chan data_point)
-
-	fmt.Println("Starting sending to calculators...")
-
-	fmt.Printf("Found %d points in to_be_calculated.\n", len(to_be_calculated))
-
-	for _, v := range to_be_calculated {
-		fmt.Printf("Adding point %v, %v to to_calculate.\n", real(v.coordinate), imag(v.coordinate))
-		//to_calculate <- v //This line causes deadlock!
-		counter++
+	for i := 0; i < num_threads; i++ {
+		go calculator(to_calculate, calculated, finished)
 	}
 
-	fmt.Println("Finished sending to calculators...")
+	go collector(calculated, gif, finished)
+
+	for _, v := range to_be_calculated {
+		to_calculate <- v
+	}
 
 	close(to_calculate)
 
 	for i := 0; i < num_threads; i++ {
-		go calculator(to_calculate, calculated)
+		<-finished
 	}
 
-	fmt.Println("Spun off all go calculators...")
+	close(calculated)
 
-	for ; counter >= 0; counter-- {
-		current_point := <-calculated //This line also causes deadlock
-		for _, value := range current_point.zoom_levels {
-			//Insert comment here
-			gif.frames[value-1].m[current_point.coordinate] = current_point
-		}
-	}
-
-	fmt.Println("Now attempting to write to files...")
+	<-finished
 
 	for i, v := range gif.frames {
 		file_name := fmt.Sprintf("frame%02d.txt", i-1)
