@@ -74,15 +74,10 @@ func testCheckConvergence() {
 	}
 }
 
-func calculator(quit chan bool, to_calculate chan data_point, calculated chan data_point) {
-	for {
-		select {
-		case current_point := <-to_calculate:
-			current_point.converges, current_point.iterations = checkConvergence(current_point.coordinate, 0+0i, 2000)
-			calculated <- current_point
-		case <-quit:
-			return
-		}
+func calculator(to_calculate chan data_point, calculated chan data_point) {
+	for current_point := range to_calculate {
+		current_point.converges, current_point.iterations = checkConvergence(current_point.coordinate, 0+0i, 2000)
+		calculated <- current_point
 	}
 }
 
@@ -125,16 +120,25 @@ func main() {
 
 	var to_calculate = make(chan data_point)
 	var calculated = make(chan data_point)
-	var quitting_time = make(chan bool)
+
+	fmt.Println("Starting sending to calculators...")
+
+	fmt.Printf("%d\n", len(to_be_calculated))
 
 	for _, v := range to_be_calculated {
 		to_calculate <- v
 		counter++
 	}
 
+	fmt.Println("Finished sending to calculators...")
+
+	close(to_calculate)
+
 	for i := 0; i < num_threads; i++ {
-		go calculator(quitting_time, to_calculate, calculated)
+		go calculator(to_calculate, calculated)
 	}
+
+	fmt.Println("Spun off all go calculators...")
 
 	for ; counter >= 0; counter-- {
 		current_point := <-calculated
@@ -144,9 +148,7 @@ func main() {
 		}
 	}
 
-	for i := 0; i < num_threads; i++ {
-		quitting_time <- true
-	}
+	fmt.Println("Now attempting to write to files...")
 
 	for i, v := range gif.frames {
 		file_name := fmt.Sprintf("frame%02d.txt", i-1)
