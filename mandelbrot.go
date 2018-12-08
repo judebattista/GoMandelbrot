@@ -81,6 +81,13 @@ func calculator(to_calculate chan data_point, calculated chan data_point) {
 	}
 }
 
+func busyWork(targetChannel chan data_point) {
+	for {
+		dummyPoint := data_point{0 + 0i, true, 10, []int{1, 2}}
+		targetChannel <- dummyPoint
+	}
+}
+
 func main() {
 	//determine zoom
 	//determine set of points
@@ -123,9 +130,13 @@ func main() {
 
 	fmt.Println("Starting sending to calculators...")
 
-	fmt.Printf("%d\n", len(to_be_calculated))
+	fmt.Printf("Found %d points in to_be_calculated.\n", len(to_be_calculated))
+
+	go busyWork(calculated)
+	go busyWork(to_calculate)
 
 	for _, v := range to_be_calculated {
+		fmt.Printf("Adding point %v, %v to to_calculate.\n", real(v.coordinate), imag(v.coordinate))
 		to_calculate <- v
 		counter++
 	}
