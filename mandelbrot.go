@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math"
+	"os"
 )
 
 /*
@@ -72,6 +74,18 @@ func testCheckConvergence() {
 	}
 }
 
+func calculator(quit chan bool, to_calculate chan data_point, calculated chan data_point) {
+	for {
+		select {
+		case current_point := <-to_calculate:
+			current_point.converges, current_point.iterations = checkConvergence(current_point.coordinate, 0+0i, 2000)
+			calculated <- current_point
+		case <-quit:
+			return
+		}
+	}
+}
+
 func main() {
 	//determine zoom
 	//determine set of points
@@ -87,7 +101,7 @@ func main() {
 	zoom_factor := 0.5
 	frame_dimension := float64(256)
 
-	//gif := gif{number_frames, []frame{}}
+	gif := gif{int(number_frames), make([]frame, int(number_frames))}
 
 	to_be_calculated := make(map[complex128]data_point)
 
@@ -105,11 +119,44 @@ func main() {
 		}
 	}
 
-	for k, v := range to_be_calculated {
-		if (k == 0+0i) || (k == 0+.5i) || (k == 0+1i) || (k == 0+1.5i) || (k == 0+2i) || (k == 0+2.5i) {
-			fmt.Println(k, v)
+	counter := 0
+
+	num_threads := 5
+
+	var to_calculate = make(chan data_point)
+	var calculated = make(chan data_point)
+	var quitting_time = make(chan bool)
+
+	for _, v := range to_be_calculated {
+		to_calculate <- v
+		counter++
+	}
+
+	for i := 0; i < num_threads; i++ {
+		go calculator(quitting_time, to_calculate, calculated)
+	}
+
+	for ; counter >= 0; counter-- {
+		current_point := <-calculated
+		for _, value := range current_point.zoom_levels {
+			//Insert comment here
+			gif.frames[value-1].m[current_point.coordinate] = current_point
 		}
 	}
 
-	testCheckConvergence()
+	for i := 0; i < num_threads; i++ {
+		quitting_time <- true
+	}
+
+	for i, v := range gif.frames {
+		file_name := fmt.Sprintf("frame%02d.txt", i-1)
+		file, err := os.Create(file_name)
+		if err != nil {
+			log.Fatal("Cannot create file", err)
+		}
+		for _, point := range v.m {
+			fmt.Fprintf(file, "%v, %v, %v", real(point.coordinate), imag(point.coordinate), point.iterations)
+		}
+		file.Close()
+	}
 }
