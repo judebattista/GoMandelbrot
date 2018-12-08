@@ -111,13 +111,13 @@ func main() {
 	//check each remaining point for convergence
 	//write the zoom level to an image
 
-	number_frames := float64(5)
+	number_frames := float64(30)
 
-	starting_coordinate := 0 + 0i
+	starting_coordinate := -.170337 + -1.06506i
 	a := real(starting_coordinate)
 	b := imag(starting_coordinate)
-	zoom_factor := 0.5
-	frame_dimension := float64(256)
+	zoom_factor := 0.05
+	frame_dimension := float64(512)
 
 	gif := gif{int(number_frames), make([]frame, int(number_frames))}
 
@@ -138,7 +138,7 @@ func main() {
 		}
 	}
 
-	num_threads := 5
+	num_threads := 8
 	to_calculate := make(chan data_point)
 	calculated := make(chan data_point)
 	finished := make(chan bool)
