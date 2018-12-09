@@ -10,7 +10,7 @@ import (
 /*
 	real values: -2.0 to 1.0
 	imag values: -1.5 to 1.5
-	If the magnitude of a given iteration for point c is greater than 2, then the sequence tend to infinity
+	If the magnitude of a given iteration for point c is greater than 2, then the sequence tends to infinity
 */
 
 //find out how far away from the origin our complex coordinate is
@@ -58,6 +58,7 @@ func checkConvergence(arg complex128, seed complex128, maxIterations int) (conve
 			return
 		}
 	}
+	iterations = -1
 	converges = true
 	return
 }
@@ -91,12 +92,14 @@ func main() {
 	//check each remaining point for convergence
 	//write the zoom level to an image
 
-	number_frames := float64(1)
+	number_frames := float64(10)
 
-	starting_coordinate := 0 + 0i
+	starting_coordinate := -0.7463 + 0.1102i
 	a := real(starting_coordinate)
 	b := imag(starting_coordinate)
-	biggest_coord_offset := float64(2)
+	//Everything interesting happens between -2 and 2 on both axes
+	//If the starting coordinate is not 0+0i, the offset needs to be changed to include that window
+	biggest_coord_offset := float64(.01)
 	frame_dimension := float64(1024)
 	zoom_factor := (2 * biggest_coord_offset) / frame_dimension
 
@@ -106,16 +109,21 @@ func main() {
 
 	//Can we parallelize this?
 	for i := float64(1); i <= number_frames; i++ {
-		x_offset := float64(zoom_factor / i)
+		x_offset := float64(zoom_factor * math.Pow(.9, i-1))
+		//x_offset and y_offset should always be the same, but we're leaving both in just in case
+		//Note that if they ever differ, the python script will need to be revised
 		y_offset := x_offset
-		radius := float64((frame_dimension * x_offset) / 2)
-		for x := a - (radius); x < a + radius; x += x_offset {
-			for y := b - (radius); y < b + radius ; y += y_offset {
+		x := a - frame_dimension*x_offset/2
+		for foo := float64(0); foo < frame_dimension; foo++ {
+			y := b - frame_dimension*y_offset/2
+			for bar := float64(0); bar < frame_dimension; bar++ {
 				data := to_be_calculated[complex(float64(x), float64(y))]
 				data.zoom_levels = append(data.zoom_levels, int(i))
 				data.coordinate = complex(float64(x), float64(y))
 				to_be_calculated[complex(float64(x), float64(y))] = data
+				y += y_offset
 			}
+			x += x_offset
 		}
 	}
 
