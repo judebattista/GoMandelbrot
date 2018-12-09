@@ -58,26 +58,13 @@ func checkConvergence(arg complex128, seed complex128, maxIterations int) (conve
 			return
 		}
 	}
-	iterations = 0
 	converges = true
 	return
 }
 
-func testCheckConvergence() {
-	for foo := 0.0; foo < 2; foo += 0.2 {
-		for bar := 0.0; bar < 2; bar += 0.2 {
-			var coords = complex(foo, bar)
-			converges, iterations := checkConvergence(coords, 0, 10)
-			if converges {
-				fmt.Printf("%v + %vi converges: %v after %v iterations.\n", real(coords), imag(coords), converges, iterations)
-			}
-		}
-	}
-}
-
 func calculator(to_calculate chan data_point, calculated chan data_point, finished chan bool) {
 	for current_point := range to_calculate {
-		current_point.converges, current_point.iterations = checkConvergence(current_point.coordinate, 0+0i, 2000)
+		current_point.converges, current_point.iterations = checkConvergence(current_point.coordinate, 0+0i, 100)
 		calculated <- current_point
 	}
 	finished <- true
@@ -98,15 +85,20 @@ func collector(calculated chan data_point, finished gif, completed chan bool) {
 }
 
 func main() {
-	//testCheckConvergence()
+	//determine zoom
+	//determine set of points
+	//find any previously calculated points
+	//check each remaining point for convergence
+	//write the zoom level to an image
 
 	number_frames := float64(1)
 
-	starting_coordinate := -.170337 + -1.06506i
+	starting_coordinate := 0 + 0i
 	a := real(starting_coordinate)
 	b := imag(starting_coordinate)
-	zoom_factor := 0.001
-	frame_dimension := float64(4096)
+	biggest_coord_offset := float64(2)
+	frame_dimension := float64(1024)
+	zoom_factor := (2 * biggest_coord_offset) / frame_dimension
 
 	gif := gif{int(number_frames), make([]frame, int(number_frames))}
 
@@ -114,11 +106,11 @@ func main() {
 
 	//Can we parallelize this?
 	for i := float64(1); i <= number_frames; i++ {
-		radius := float64((frame_dimension * i * zoom_factor) / 2)
-		x_offset := float64(i * zoom_factor)
-		y_offset := float64(i * zoom_factor)
-		for x := a - (radius); x < a+(radius-1); x += x_offset {
-			for y := b - (radius); y < b+(radius-1); y += y_offset {
+		x_offset := float64(zoom_factor / i)
+		y_offset := x_offset
+		radius := float64((frame_dimension * x_offset) / 2)
+		for x := a - (radius); x < a + radius; x += x_offset {
+			for y := b - (radius); y < b + radius ; y += y_offset {
 				data := to_be_calculated[complex(float64(x), float64(y))]
 				data.zoom_levels = append(data.zoom_levels, int(i))
 				data.coordinate = complex(float64(x), float64(y))
@@ -132,33 +124,26 @@ func main() {
 	calculated := make(chan data_point)
 	finished := make(chan bool)
 
-	//Spin up go routines first
-	//If a channel does not have listeners, we get a deadlock
 	for i := 0; i < num_threads; i++ {
 		go calculator(to_calculate, calculated, finished)
 	}
 
 	go collector(calculated, gif, finished)
 
-	//Dump everything from to_be_calculated into the to_calculate channel
 	for _, v := range to_be_calculated {
 		to_calculate <- v
 	}
 
-	//Close the to_calculate channel in order to permit the range syntax to function
 	close(to_calculate)
 
-	//Collect one finish from each of the calculator threads
 	for i := 0; i < num_threads; i++ {
 		<-finished
 	}
 
 	close(calculated)
 
-	//Collect a final finish from the collector thread
 	<-finished
 
-	//Write the data sets to files
 	for i, v := range gif.frames {
 		file_name := fmt.Sprintf("frame%02d.txt", i)
 		file, err := os.Create(file_name)
