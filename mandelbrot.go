@@ -58,6 +58,7 @@ func checkConvergence(arg complex128, seed complex128, maxIterations int) (conve
 			return
 		}
 	}
+	iterations = 0
 	converges = true
 	return
 }
@@ -96,28 +97,16 @@ func collector(calculated chan data_point, finished gif, completed chan bool) {
 	completed <- true
 }
 
-//Function to spam a channel with meaningless data for test purposes
-func busyWork(targetChannel chan data_point) {
-	for {
-		dummyPoint := data_point{0 + 0i, true, 10, []int{1, 2}}
-		targetChannel <- dummyPoint
-	}
-}
-
 func main() {
-	//determine zoom
-	//determine set of points
-	//find any previously calculated points
-	//check each remaining point for convergence
-	//write the zoom level to an image
+	//testCheckConvergence()
 
-	number_frames := float64(30)
+	number_frames := float64(1)
 
 	starting_coordinate := -.170337 + -1.06506i
 	a := real(starting_coordinate)
 	b := imag(starting_coordinate)
-	zoom_factor := 0.05
-	frame_dimension := float64(512)
+	zoom_factor := 0.001
+	frame_dimension := float64(4096)
 
 	gif := gif{int(number_frames), make([]frame, int(number_frames))}
 
@@ -143,26 +132,33 @@ func main() {
 	calculated := make(chan data_point)
 	finished := make(chan bool)
 
+	//Spin up go routines first
+	//If a channel does not have listeners, we get a deadlock
 	for i := 0; i < num_threads; i++ {
 		go calculator(to_calculate, calculated, finished)
 	}
 
 	go collector(calculated, gif, finished)
 
+	//Dump everything from to_be_calculated into the to_calculate channel
 	for _, v := range to_be_calculated {
 		to_calculate <- v
 	}
 
+	//Close the to_calculate channel in order to permit the range syntax to function
 	close(to_calculate)
 
+	//Collect one finish from each of the calculator threads
 	for i := 0; i < num_threads; i++ {
 		<-finished
 	}
 
 	close(calculated)
 
+	//Collect a final finish from the collector thread
 	<-finished
 
+	//Write the data sets to files
 	for i, v := range gif.frames {
 		file_name := fmt.Sprintf("frame%02d.txt", i)
 		file, err := os.Create(file_name)
