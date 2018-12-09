@@ -3,7 +3,8 @@ from array2gif import write_gif
 
 size_of_image = 1024
 num_frames = 10
-
+max_iterations = 100
+threshold = max_iterations / 2
 def iterations_to_RGB(iterations):
     #if the point converges it has -1 iterations
     if iterations == -1:
@@ -12,13 +13,17 @@ def iterations_to_RGB(iterations):
     if iterations == 0:
         return [255, 60, 200]
     checks = [pow(2, x) for x in range(0, 10)]
+    """
     for z in checks:
         if iterations < z:
             index = checks.index(z) + 1
-            return [index * 255/len(checks), 255, 0]
+            return [index * 255/len(checks), , ]
     return [255, 0, 0]
-
-
+    """
+    if iterations < threshold:
+        return [iterations*10, 0, 0]
+    else:
+        return[255, (iterations - threshold)*10, (iterations - threshold)*10]
 
 def read_data(file_name, gif):
     input_data = {}

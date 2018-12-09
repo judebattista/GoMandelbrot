@@ -63,9 +63,9 @@ func checkConvergence(arg complex128, seed complex128, maxIterations int) (conve
 	return
 }
 
-func calculator(to_calculate chan data_point, calculated chan data_point, finished chan bool) {
+func calculator(to_calculate chan data_point, calculated chan data_point, finished chan bool, max_iterations int) {
 	for current_point := range to_calculate {
-		current_point.converges, current_point.iterations = checkConvergence(current_point.coordinate, 0+0i, 100)
+		current_point.converges, current_point.iterations = checkConvergence(current_point.coordinate, 0+0i, max_iterations)
 		calculated <- current_point
 	}
 	finished <- true
@@ -92,22 +92,25 @@ func main() {
 	//check each remaining point for convergence
 	//write the zoom level to an image
 
-	number_frames := float64(10)
-
 	starting_coordinate := -0.7463 + 0.1102i
 	a := real(starting_coordinate)
 	b := imag(starting_coordinate)
 	//Everything interesting happens between -2 and 2 on both axes
 	//If the starting coordinate is not 0+0i, the offset needs to be changed to include that window
 	biggest_coord_offset := float64(.01)
+
+	//IMPORTANT: If these values change, they must also be changed in the python script
+	//TODO: Put common values in a config file and read it into both Go and Python scripts
 	frame_dimension := float64(1024)
+	number_frames := float64(10)
+	max_iterations := 100
+
 	zoom_factor := (2 * biggest_coord_offset) / frame_dimension
 
 	gif := gif{int(number_frames), make([]frame, int(number_frames))}
 
 	to_be_calculated := make(map[complex128]data_point)
 
-	//Can we parallelize this?
 	for i := float64(1); i <= number_frames; i++ {
 		x_offset := float64(zoom_factor * math.Pow(.9, i-1))
 		//x_offset and y_offset should always be the same, but we're leaving both in just in case
@@ -133,7 +136,7 @@ func main() {
 	finished := make(chan bool)
 
 	for i := 0; i < num_threads; i++ {
-		go calculator(to_calculate, calculated, finished)
+		go calculator(to_calculate, calculated, finished, max_iterations)
 	}
 
 	go collector(calculated, gif, finished)
