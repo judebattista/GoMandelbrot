@@ -13,6 +13,9 @@ pip install array2gif
 Also ensure that you are able to run powershell scripts on your machine. To do this you may have to run "set-executionpolicy unrestricted".
 
 ## Usage
+
+**Note**: If the name of the python file is changes from test.py, you may need to modify the shell script, and keep that in mind reading the rest of this documentation.
+
 Running the following command in powershell will create a gif called test.gif  in your current working directory.
 ```bash
 .\BuildGif.ps1
