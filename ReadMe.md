@@ -23,7 +23,7 @@ Also note that several text files with information about each frame will be crea
 py ./test.py
 ```
 
-To modify various parameters regarding what will eventually be in the final gif. Make sure that when you modify them you also have them consistent across both the go and the python files.
+When modifying various parameters regarding what will eventually be in the final gif, make sure that when you modify them in one file that you have them consistent across both the go and the python files.
 
 In the python file:
 ```python
