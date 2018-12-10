@@ -154,6 +154,26 @@ func writeGifFiles(gif gif) {
 	}
 }
 
+//Spin up all of our calculators
+func spinUpCalculators(num_threads int, to_calculate chan data_point, calculated chan data_point, finished chan bool, max_iterations int) {
+	for i := 0; i < num_threads; i++ {
+		go calculator(to_calculate, calculated, finished, max_iterations)
+	}
+}
+
+//spin up our collector
+//Note that since collector writes to a map, there should only be a single instance
+func spinUpCollector(calculated chan data_point, gif gif, finished chan bool) {
+	go collector(calculated, gif, finished)
+}
+
+//Dump all the points from to_be_calculated into to_calculate
+func feedCalculators(to_be_calculated map[complex128]data_point, to_calculate chan data_point) {
+	for _, v := range to_be_calculated {
+		to_calculate <- v
+	}
+}
+
 func main() {
 	//determine zoom
 	//determine set of points
@@ -200,18 +220,13 @@ func main() {
 	//IMPORTANT: Spin up the listeners BEFORE you start using the channels
 	//This was the source of our perplexing deadlock
 	//Spin up all of our calculators
-	for i := 0; i < num_threads; i++ {
-		go calculator(to_calculate, calculated, finished, max_iterations)
-	}
+	spinUpCalculators(num_threads, to_calculate, calculated, finished, max_iterations)
 
 	//As the calculators dump points into calculated, collector will pull them out and write them to gif
-	go collector(calculated, gif, finished)
+	spinUpCollector(calculated, gif, finished)
 
 	//Start feeding the calculators!
-	//Dump all the points into to_calculate
-	for _, v := range to_be_calculated {
-		to_calculate <- v
-	}
+	feedCalculators(to_be_calculated, to_calculate)
 
 	//We're fresh outta input, so close the channel
 	//Once it's empty the calculators will all terminate automatically
