@@ -123,9 +123,9 @@ func main() {
 
 	//IMPORTANT: If these values change, they must also be changed in the python script
 	//TODO: Put common values in a config file and read it into both Go and Python scripts
-	frame_dimension := float64(2048)
-	number_frames := float64(30)
-	max_iterations := 1000
+	frame_dimension := float64(1024)
+	number_frames := float64(10)
+	max_iterations := 100
 
 	zoom_factor := (2 * biggest_coord_offset) / frame_dimension
 
