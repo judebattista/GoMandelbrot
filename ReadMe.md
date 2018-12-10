@@ -1,6 +1,6 @@
 # GoMandlebrodt
 
-This project contains a go and a python file used to both generate and display various gifs of the mandlebrodt set respectively.
+This project contains a go and a python file used to both generate and display various gifs of the mandlebrodt set respectively. This readme was made by using this helpful [webiste](https://www.makeareadme.com/)!
 
 ## Installation
 
