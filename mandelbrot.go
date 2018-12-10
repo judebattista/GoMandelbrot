@@ -107,26 +107,50 @@ func collector(calculated chan data_point, finished gif, completed chan bool) {
 	completed <- true
 }
 
+//Find all the points in every frame of our gif
 func callingAllPoints(to_be_calculated map[complex128]data_point, starting_coordinate complex128, number_frames float64, zoom_factor float64, frame_dimension float64) {
+	//Split the complex coordinate a+bi into its real and imaginary coefficients
 	a := real(starting_coordinate)
 	b := imag(starting_coordinate)
+	//For each frame in the gif
 	for i := float64(1); i <= number_frames; i++ {
+		//figure out how far apart our points are
 		x_offset := float64(zoom_factor * math.Pow(.9, i-1))
 		//x_offset and y_offset should always be the same, but we're leaving both in just in case
 		//Note that if they ever differ, the python script will need to be revised
 		y_offset := x_offset
+		//For every x value in the frame...
 		x := a - frame_dimension*x_offset/2
 		for foo := float64(0); foo < frame_dimension; foo++ {
+			//find all the y-values in the frame
 			y := b - frame_dimension*y_offset/2
 			for bar := float64(0); bar < frame_dimension; bar++ {
+				//for every x,y point add this zoom level to the list of zoom levels that use it
 				data := to_be_calculated[complex(float64(x), float64(y))]
 				data.zoom_levels = append(data.zoom_levels, int(i))
 				data.coordinate = complex(float64(x), float64(y))
+				//add the point to the map
 				to_be_calculated[complex(float64(x), float64(y))] = data
 				y += y_offset
 			}
 			x += x_offset
 		}
+	}
+}
+
+//Take all the points in the gif object and write them to a series of csv files, each representing one frame of the gif
+//These files will be written to a gif by our test.py script
+func writeGifFiles(gif gif) {
+	for i, v := range gif.frames {
+		file_name := fmt.Sprintf("frame%02d.txt", i)
+		file, err := os.Create(file_name)
+		if err != nil {
+			log.Fatal("Cannot create file", err)
+		}
+		for _, point := range v.m {
+			fmt.Fprintf(file, "%v, %v, %v\n", real(point.coordinate), imag(point.coordinate), point.iterations)
+		}
+		file.Close()
 	}
 }
 
@@ -166,39 +190,49 @@ func main() {
 
 	//how many threads does your processor support? Probably roughly twice the number of cores
 	num_threads := 8
+	//Channel to supply the points to the calculators
 	to_calculate := make(chan data_point)
+	//Channel to receive the points after their convergence has been calculated
 	calculated := make(chan data_point)
+	//Channel to announce completion
 	finished := make(chan bool)
 
+	//IMPORTANT: Spin up the listeners BEFORE you start using the channels
+	//This was the source of our perplexing deadlock
+	//Spin up all of our calculators
 	for i := 0; i < num_threads; i++ {
 		go calculator(to_calculate, calculated, finished, max_iterations)
 	}
 
+	//As the calculators dump points into calculated, collector will pull them out and write them to gif
 	go collector(calculated, gif, finished)
 
+	//Start feeding the calculators!
+	//Dump all the points into to_calculate
 	for _, v := range to_be_calculated {
 		to_calculate <- v
 	}
 
+	//We're fresh outta input, so close the channel
+	//Once it's empty the calculators will all terminate automatically
 	close(to_calculate)
 
+	//Wait for every calculator to send it's finished message
 	for i := 0; i < num_threads; i++ {
 		<-finished
 	}
 
+	//Normally you do not want to close a channel outside of that channel's sender
+	//In this case, since we have multiple senders, none of them can authoritatively close it
+	//So we have to wait for all of them the announce they are finished and then close it in main
+	//close the calculated channel since no more inputs are coming.
 	close(calculated)
 
+	//Wait for one final finished message, presumably from collector
+	//This could be risky since we are not guaranteed that all the calculators will finish and announce before collector
+	//In practice, since all the calculators feed the channel that collector depends on, it is a reasonable risk.
 	<-finished
 
-	for i, v := range gif.frames {
-		file_name := fmt.Sprintf("frame%02d.txt", i)
-		file, err := os.Create(file_name)
-		if err != nil {
-			log.Fatal("Cannot create file", err)
-		}
-		for _, point := range v.m {
-			fmt.Fprintf(file, "%v, %v, %v\n", real(point.coordinate), imag(point.coordinate), point.iterations)
-		}
-		file.Close()
-	}
+	//Output the csv files that will be turned into a beeeyootiful gif. Or garbage. Pick your parameters wisely!
+	writeGifFiles(gif)
 }
