@@ -1,10 +1,10 @@
 import numpy as np
 from array2gif import write_gif
 
-size_of_image = 2048
+size_of_image = 1024
 num_frames = 30
 max_iterations = 1000
-threshold = max_iterations / 2
+threshold = max_iterations // 2
 def iterations_to_RGB(iterations):
     #if the point converges it has -1 iterations
     if iterations == -1:
@@ -20,9 +20,9 @@ def iterations_to_RGB(iterations):
     return [255, 0, 0]
     """
     if iterations < threshold:
-        return [iterations*(threshold / 255), 0, 0]
+        return [(iterations // 4)*(threshold // 127), 0, 0]
     else:
-        return[255, (iterations - threshold)*(threshold / 255), (iterations - threshold)*(threshold / 255)]
+        return[255, ((iterations - threshold)//4)*(threshold // 127), ((iterations - threshold)//4)*(threshold // 127)]
 
 def read_data(file_name, gif):
     input_data = {}
@@ -48,5 +48,5 @@ for i in range(0, num_frames, 1):
     file_name = "frame" + str(i).zfill(2) + ".txt"
     gif.append(read_data(file_name, gif))
 
-write_gif(gif, 'test.gif', fps=1)
+write_gif(gif, 'test.gif', fps=10)
 
