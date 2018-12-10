@@ -23,7 +23,7 @@ Also note that several text files with information about each frame will be crea
 py ./test.py
 ```
 
-When modifying various parameters regarding what will eventually be in the final gif, make sure that when you modify them in one file that you have them consistent across both the go and the python files.
+When modifying various parameters regarding what will eventually be in the final gif, make sure that when you modify the following ones, you do so carefully. If you modify them in one file that you must have them consistent across both the go and the python files. They should be relatively self explanatory, but just incase the size_of_image/frame_dimension is the number of pixels in the x and y direction of the final gif, the num_frames/number_frames is the number of frames and max_iterations is the total number of iterations allowed to check for convergence.
 
 In the python file:
 ```python
@@ -35,13 +35,34 @@ max_iterations = 1000
 ```
 In the go file:
 ```go
-#This is somewhere near the start of main
+//This is somewhere near the start of main
 frame_dimension := float64(1024)
 number_frames := float64(30)
 max_iterations := 1000
 
 ```
 **Note**: more than 100 total frames is not currently supported. It would not be difficult to change so that it does work however, but it may take a while for the program to complete.
+
+The only parameters that you can customize exclusively in the go file are as follows. They influence the point on which you are zooming in on, and the dimensions of the starting frame. This also tangentially means that if you have a large biggest_coord_offset, then you will be starting from a very far out zoom. That means that you will need to have the gif be going for a bigger frame count in order to zoom in enough. You can also modify the zoom rate further down to change the change in image size between the images.
+
+In the go file:
+```go
+//This is in the function callingAllPoints
+//Change the .9 to something
+x_offset := float64(zoom_factor * math.Pow(.9, i-1))
+
+
+//The following is in main:
+starting_coordinate := -0.7453 + 0.1127i //This is an interesting point to zoom in on
+biggest_coord_offset := float64(.0013) //This is an interesting starting size too
+
+```
+
+The only parameters that you can exclusively modify in the python file is the frames per second of the final gif! Modify it in the following function call at the end of the file.
+In the python file:
+```python
+write_gif(gif, 'test.gif', fps=10) #change fps as desired
+```
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
