@@ -107,32 +107,9 @@ func collector(calculated chan data_point, finished gif, completed chan bool) {
 	completed <- true
 }
 
-func main() {
-	//determine zoom
-	//determine set of points
-	//find any previously calculated points
-	//check each remaining point for convergence
-	//write the zoom level to an image
-
-	starting_coordinate := -0.7463 + 0.1102i
+func callingAllPoints(to_be_calculated map[complex128]data_point, starting_coordinate complex128, number_frames float64, zoom_factor float64, frame_dimension float64) {
 	a := real(starting_coordinate)
 	b := imag(starting_coordinate)
-	//Everything interesting happens between -2 and 2 on both axes
-	//If the starting coordinate is not 0+0i, the offset needs to be changed to include that window
-	biggest_coord_offset := float64(.01)
-
-	//IMPORTANT: If these values change, they must also be changed in the python script
-	//TODO: Put common values in a config file and read it into both Go and Python scripts
-	frame_dimension := float64(1024)
-	number_frames := float64(10)
-	max_iterations := 100
-
-	zoom_factor := (2 * biggest_coord_offset) / frame_dimension
-
-	gif := gif{int(number_frames), make([]frame, int(number_frames))}
-
-	to_be_calculated := make(map[complex128]data_point)
-
 	for i := float64(1); i <= number_frames; i++ {
 		x_offset := float64(zoom_factor * math.Pow(.9, i-1))
 		//x_offset and y_offset should always be the same, but we're leaving both in just in case
@@ -151,7 +128,43 @@ func main() {
 			x += x_offset
 		}
 	}
+}
 
+func main() {
+	//determine zoom
+	//determine set of points
+	//find any previously calculated points
+	//check each remaining point for convergence
+	//write the zoom level to an image
+
+	starting_coordinate := -0.7463 + 0.1102i
+	//Everything interesting happens between -2 and 2 on both axes
+	//If the starting coordinate is not 0+0i, the offset needs to be changed to include that window
+	biggest_coord_offset := float64(.01)
+
+	//IMPORTANT: If these values change, they must also be changed in the python script
+	//TODO: Put common values in a config file and read it into both Go and Python scripts
+	//How many points are in each frame?
+	frame_dimension := float64(1024)
+	//How many frames are in the gif?
+	number_frames := float64(10)
+	//How many times will we iterate over a point before deciding that it diverges.
+	//The higher the value, the more detail is revealed along the fractal edges.
+	max_iterations := 100
+
+	//How much will we change our resolution per frame?
+	zoom_factor := (2 * biggest_coord_offset) / frame_dimension
+
+	//Create the object that represents our gif
+	gif := gif{int(number_frames), make([]frame, int(number_frames))}
+
+	//map to hold all the points prior to calculation
+	to_be_calculated := make(map[complex128]data_point)
+
+	//
+	callingAllPoints(to_be_calculated, starting_coordinate, number_frames, zoom_factor, frame_dimension)
+
+	//how many threads does your processor support? Probably roughly twice the number of cores
 	num_threads := 8
 	to_calculate := make(chan data_point)
 	calculated := make(chan data_point)
