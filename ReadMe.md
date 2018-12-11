@@ -4,6 +4,8 @@ This project contains a go and a python file used to both generate and display v
 
 **Note:** We are by no means mathematicians, let alone experts on the mandlebrot set. For more information about calculating if a point is in the set, or information about the set please see other sources such as [this one](http://mathworld.wolfram.com/MandelbrotSet.html) or [this one](http://www.math.utah.edu/~pa/math/mandelbrot/mandelbrot.html).
 
+Attatched to this repo is also a folder called progress gifs. They are not particularly well named, but they are some interesting outputs that we had gotten by running our code. For interesting coordinates to zoom in on, please again see other websites (such as [this](http://www.cuug.ab.ca/dewara/mandelbrot/Mandelbrowser.html))
+
 ## Installation
 
 Use the package manager [pip](https://pip.pypa.io/en/stable/) to install both [numpy](https://pypi.org/project/numpy/) and [array2gif](https://pypi.org/project/array2gif/).
