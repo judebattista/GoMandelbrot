@@ -36,6 +36,10 @@ type gif struct {
 }
 
 //find out how far away from the origin our complex coordinate is
+//Takes:
+//	A set of complex coordinates
+//Returns:
+//	The magnitude of that point
 func magnitude(arg complex128) (mag float64) {
 	mag = math.Sqrt(real(arg)*real(arg) + imag(arg)*imag(arg))
 	return
@@ -43,6 +47,10 @@ func magnitude(arg complex128) (mag float64) {
 
 //Since the ultimate purpose is to compare the magnitude to 2, what if we just compared the square of the magnitude to 4?
 //Saves a square root call, which should provide some benefit over a million points or so.
+//Takes:
+//	A set of complex coordinates
+//Returns:
+//	The square of the magnitude of that point
 func magnitudeSquared(arg complex128) (mag float64) {
 	mag = real(arg)*real(arg) + imag(arg)*imag(arg)
 	return
@@ -50,6 +58,14 @@ func magnitudeSquared(arg complex128) (mag float64) {
 
 //Core Mandelbrot calculation: x2 = x1^2 + arg
 //Default seed should be zero, setting seed equal to arg is another valid approach
+//Takes:
+//	the complex coordinates of the point,
+//	the seed for the calculation which should generally be zero. Setting the see equal to the arg is another valid approach
+//	the maximum number of iterations. If we exceed this without diverging we assume convergence. Raising this value increases the resolution along the edges of the set
+//Returns:
+//	whether or not the point converges
+//	If the point diverges, it returns the number of iterations required to establish divergence
+//	If the point converges, it sets the iterations to -1 to distinguish it from points that were never calculated which have iterations of 0
 func checkConvergence(arg complex128, seed complex128, maxIterations int) (converges bool, iterations int) {
 	//Start at the seed value
 	currentTerm := seed
@@ -78,6 +94,15 @@ func checkConvergence(arg complex128, seed complex128, maxIterations int) (conve
 
 //Go routine to calculate the convergence of a point.
 //It pulls from the to_calculate channel until said channel is empty and closed
+//After a point is calculated, deposit it in the calculated channel
+//When finished it announces on the finished channel
+//Takes:
+//	a channel from which it consumes uncalculated data points
+//	a channel on which to send calculated data points
+//	a channel on which to announce completion
+//	the maximum number of iterations to attempt before concluding convergence
+//Returns:
+//	Nothing
 func calculator(to_calculate chan data_point, calculated chan data_point, finished chan bool, max_iterations int) {
 	//Get points from the channel until it is empty and closed
 	for current_point := range to_calculate {
@@ -92,6 +117,12 @@ func calculator(to_calculate chan data_point, calculated chan data_point, finish
 
 //Function to collect the calculated points from the channel and store them in a map
 //Since it writes to a map, this should not be parallelized
+//Takes:
+//	a channel from which it consumes calculated data points
+//	a gif to which it writes the calculated data points
+//	a channel on which to announce completion
+//Returns:
+//	Nothing
 func collector(calculated chan data_point, finished gif, completed chan bool) {
 	for current_point := range calculated {
 		for _, value := range current_point.zoom_levels {
@@ -108,6 +139,12 @@ func collector(calculated chan data_point, finished gif, completed chan bool) {
 }
 
 //Find all the points in every frame of our gif
+//Takes:
+//	a map from coordinates to data points
+//	the center coordinate of the region to examine
+//	the number of frames for which points need to be found
+//	the zoom factor between frames
+//	the length of one side of the frame
 func callingAllPoints(to_be_calculated map[complex128]data_point, starting_coordinate complex128, number_frames float64, zoom_factor float64, frame_dimension float64) {
 	//Split the complex coordinate a+bi into its real and imaginary coefficients
 	a := real(starting_coordinate)
@@ -225,11 +262,12 @@ func main() {
 	//As the calculators dump points into calculated, collector will pull them out and write them to gif
 	spinUpCollector(calculated, gif, finished)
 
-	//Start feeding the calculators!
+	//Start feeding the calculators by dumping the data points from the map to the channel
+	//Each point dumped into the to_calculate channel will be pulled by one of the calculators and evaluated for divergence.
 	feedCalculators(to_be_calculated, to_calculate)
 
 	//We're fresh outta input, so close the channel
-	//Once it's empty the calculators will all terminate automatically
+	//Once it's empty the calculators will all terminate automatically thanks to the range syntax
 	close(to_calculate)
 
 	//Wait for every calculator to send it's finished message
