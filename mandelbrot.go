@@ -37,9 +37,9 @@ type gif struct {
 
 //find out how far away from the origin our complex coordinate is
 //Takes:
-//	A set of complex coordinates
+//	arg: A set of complex coordinates
 //Returns:
-//	The magnitude of that point
+//	mag: The magnitude of that point
 func magnitude(arg complex128) (mag float64) {
 	mag = math.Sqrt(real(arg)*real(arg) + imag(arg)*imag(arg))
 	return
@@ -48,9 +48,9 @@ func magnitude(arg complex128) (mag float64) {
 //Since the ultimate purpose is to compare the magnitude to 2, what if we just compared the square of the magnitude to 4?
 //Saves a square root call, which should provide some benefit over a million points or so.
 //Takes:
-//	A set of complex coordinates
+//	arg: A set of complex coordinates
 //Returns:
-//	The square of the magnitude of that point
+//	mag: The square of the magnitude of that point
 func magnitudeSquared(arg complex128) (mag float64) {
 	mag = real(arg)*real(arg) + imag(arg)*imag(arg)
 	return
@@ -59,13 +59,13 @@ func magnitudeSquared(arg complex128) (mag float64) {
 //Core Mandelbrot calculation: x2 = x1^2 + arg
 //Default seed should be zero, setting seed equal to arg is another valid approach
 //Takes:
-//	the complex coordinates of the point,
-//	the seed for the calculation which should generally be zero. Setting the see equal to the arg is another valid approach
-//	the maximum number of iterations. If we exceed this without diverging we assume convergence. Raising this value increases the resolution along the edges of the set
+//	arg: the complex coordinates of the point,
+//	seed: the seed for the calculation which should generally be zero. Setting the see equal to the arg is another valid approach
+//	maxIterations: the maximum number of iterations. If we exceed this without diverging we assume convergence. Raising this value increases the resolution along the edges of the set
 //Returns:
-//	whether or not the point converges
-//	If the point diverges, it returns the number of iterations required to establish divergence
-//	If the point converges, it sets the iterations to -1 to distinguish it from points that were never calculated which have iterations of 0
+//	converges: whether or not the point converges
+//	iterations:	If the point diverges, it returns the number of iterations required to establish divergence
+//				If the point converges, it sets the iterations to -1 to distinguish it from points that were never calculated which have iterations of 0
 func checkConvergence(arg complex128, seed complex128, maxIterations int) (converges bool, iterations int) {
 	//Start at the seed value
 	currentTerm := seed
@@ -97,10 +97,10 @@ func checkConvergence(arg complex128, seed complex128, maxIterations int) (conve
 //After a point is calculated, deposit it in the calculated channel
 //When finished it announces on the finished channel
 //Takes:
-//	a channel from which it consumes uncalculated data points
-//	a channel on which to send calculated data points
-//	a channel on which to announce completion
-//	the maximum number of iterations to attempt before concluding convergence
+//	to_calculate: a channel from which it consumes uncalculated data points
+//	calculated: a channel on which to send calculated data points
+//	finished: a channel on which to announce completion
+//	max_iterations: the maximum number of iterations to attempt before concluding convergence
 //Returns:
 //	Nothing
 func calculator(to_calculate chan data_point, calculated chan data_point, finished chan bool, max_iterations int) {
@@ -118,9 +118,9 @@ func calculator(to_calculate chan data_point, calculated chan data_point, finish
 //Function to collect the calculated points from the channel and store them in a map
 //Since it writes to a map, this should not be parallelized
 //Takes:
-//	a channel from which it consumes calculated data points
-//	a gif to which it writes the calculated data points
-//	a channel on which to announce completion
+//	calculated: a channel from which it consumes calculated data points
+//	finished: a gif to which it writes the calculated data points
+//	completed: a channel on which to announce completion
 //Returns:
 //	Nothing
 func collector(calculated chan data_point, finished gif, completed chan bool) {
@@ -140,11 +140,11 @@ func collector(calculated chan data_point, finished gif, completed chan bool) {
 
 //Find all the points in every frame of our gif
 //Takes:
-//	a map from coordinates to data points
-//	the center coordinate of the region to examine
-//	the number of frames for which points need to be found
-//	the zoom factor between frames
-//	the length of one side of the frame
+//	to_be_calculated: a map from coordinates to data points
+//	starting_coordinate: the center coordinate of the region to examine
+//	number_frames: the number of frames for which points need to be found
+//	zoom_factor: the zoom factor between frames
+//	frame_dimension: the length of one side of the frame, which is assumed to be square
 func callingAllPoints(to_be_calculated map[complex128]data_point, starting_coordinate complex128, number_frames float64, zoom_factor float64, frame_dimension float64) {
 	//Split the complex coordinate a+bi into its real and imaginary coefficients
 	a := real(starting_coordinate)
@@ -177,13 +177,19 @@ func callingAllPoints(to_be_calculated map[complex128]data_point, starting_coord
 
 //Take all the points in the gif object and write them to a series of csv files, each representing one frame of the gif
 //These files will be written to a gif by our test.py script
+//Takes:
+//	gif: A gif object containing all the data to be written to files
+//Returns:
+//	Nothing
 func writeGifFiles(gif gif) {
 	for i, v := range gif.frames {
+		//Try and create each file
 		file_name := fmt.Sprintf("frame%02d.txt", i)
 		file, err := os.Create(file_name)
 		if err != nil {
 			log.Fatal("Cannot create file", err)
 		}
+		//Dump all the relevant points into the file
 		for _, point := range v.m {
 			fmt.Fprintf(file, "%v, %v, %v\n", real(point.coordinate), imag(point.coordinate), point.iterations)
 		}
@@ -191,20 +197,33 @@ func writeGifFiles(gif gif) {
 	}
 }
 
-//Spin up all of our calculators
+//Create all the go routines responsible for calculating individual points
+//Takes:
+//	num_threads: The number of go routines to create
+//	to_calculate: The channel the go routines will pull uncalculated points from
+// 	calculated: The channel the go routines will send calculated points too
+//	finished: The channel on which each go routine will announce completion
+//	max_iterations: The maximum number of iterations over a point before we assume convergence
 func spinUpCalculators(num_threads int, to_calculate chan data_point, calculated chan data_point, finished chan bool, max_iterations int) {
 	for i := 0; i < num_threads; i++ {
 		go calculator(to_calculate, calculated, finished, max_iterations)
 	}
 }
 
-//spin up our collector
+//Create our collector go routine responsible for taking all the calculated data points and writing them to a map based on their coordinates
 //Note that since collector writes to a map, there should only be a single instance
+//Takes:
+//	calculated: The channel the go routine will pull calculated points from
+//	gif: The gif which holds the map of points to which the go routine will write the calculated points
+//	finished: The channel on which the go routine will announce completion
 func spinUpCollector(calculated chan data_point, gif gif, finished chan bool) {
 	go collector(calculated, gif, finished)
 }
 
 //Dump all the points from to_be_calculated into to_calculate
+//Takes:
+//	to_be_calculated: The map from coordinates to data points that holds all the newly initialized data points
+//	to_calculate: The channel into which the data points will be dumped
 func feedCalculators(to_be_calculated map[complex128]data_point, to_calculate chan data_point) {
 	for _, v := range to_be_calculated {
 		to_calculate <- v
@@ -223,7 +242,8 @@ func main() {
 	//If the starting coordinate is not 0+0i, the offset needs to be changed to include that window
 	biggest_coord_offset := float64(.01)
 
-	//IMPORTANT: If these values change, they must also be changed in the python script
+	//IMPORTANT: If the following three values change, they must also be changed in the python script
+	//	frame_dimension, number_frames, max_iterations
 	//TODO: Put common values in a config file and read it into both Go and Python scripts
 	//How many points are in each frame?
 	frame_dimension := float64(1024)
