@@ -248,10 +248,10 @@ func main() {
 	//How many points are in each frame?
 	frame_dimension := float64(1024)
 	//How many frames are in the gif?
-	number_frames := float64(10)
+	number_frames := float64(30)
 	//How many times will we iterate over a point before deciding that it diverges.
 	//The higher the value, the more detail is revealed along the fractal edges.
-	max_iterations := 100
+	max_iterations := 1000
 
 	//How much will we change our resolution per frame?
 	zoom_factor := (2 * biggest_coord_offset) / frame_dimension
